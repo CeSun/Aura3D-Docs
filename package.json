@@ -1,0 +1,14 @@
+{
+  "name": "aura3d-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assemble": "node tools/assemble.mjs",
+    "dev": "npm run assemble && vitepress dev",
+    "build": "npm run assemble && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}

@@ -1,0 +1,66 @@
+name: Deploy Docs
+
+# 手动触发的文档站发布通道：内容真源在 CeSun/Aura3D 的 doc/，本仓库只持有站点层。
+# 产物 force push 到 gh-pages，由本仓库的 Pages（Source: Deploy a branch / gh-pages）托管。
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: CeSun/Aura3D 的 ref 或 SHA，取其中的 doc/ 作为文档内容
+        type: string
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: true
+
+env:
+  DOCS_BASE: /Aura3D-Docs/
+  DOCS_BRANCH: gh-pages
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out document source
+        uses: actions/checkout@v4
+        with:
+          repository: CeSun/Aura3D
+          ref: ${{ inputs.source_ref }}
+          path: .aura3d-source
+          filter: tree:0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-fund --no-audit
+
+      # build 脚本自带 assemble（内容树 + 双语清单校验），DOCS_SRC 指向主仓库检出
+      - name: Build site
+        env:
+          DOCS_SRC: ${{ github.workspace }}/.aura3d-source/doc
+        run: npm run build
+
+      - name: Publish to ${{ env.DOCS_BRANCH }}
+        run: |
+          set -euo pipefail
+          touch .vitepress/dist/.nojekyll
+          git config --global user.name "aura3d-docs-deploy"
+          git config --global user.email "bot@users.noreply.github.com"
+
+          work=$(mktemp -d)
+          git init -q --initial-branch="$DOCS_BRANCH" "$work"
+          cp -R .vitepress/dist/. "$work"/
+          git -C "$work" add -A
+          git -C "$work" commit -q -m "docs: Aura3D@$(git -C .aura3d-source rev-parse --short HEAD)"
+          git -C "$work" push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}" "$DOCS_BRANCH"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
