@@ -1,39 +1,89 @@
 name: Deploy Docs
 
-# 手动触发的文档站发布通道：内容真源在 CeSun/Aura3D 的 doc/，本仓库只持有站点层。
-# 产物 force push 到 gh-pages，由本仓库的 Pages（Source: Deploy a branch / gh-pages）托管。
+# 本仓库只持有站点层：文档内容真源是 CeSun/Aura3D 的 doc/，构建时检出、装配成 content/，
+# 产物只活在 Pages 的 artifact 里，一版构建结果都不进 git。
+#
+# 一条产物一条通道。双语清单校验在 tools/assemble.mjs 里，死链校验在 vitepress build 里，
+# 这个 workflow 不复述任何检查，只负责「解析版本 → 构建 → 部署 → 验线上」。
+#
+# 只有一种触发：手动。可选填要构建的 Aura3D ref，同一版想重发就再点一次。
 on:
   workflow_dispatch:
     inputs:
       source_ref:
-        description: CeSun/Aura3D 的 ref 或 SHA，取其中的 doc/ 作为文档内容
+        description: CeSun/Aura3D 的 ref（分支名，或完整的 40 位提交号），取其中的 doc/ 作为文档内容
         type: string
         default: main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: deploy-docs
-  cancel-in-progress: true
+  # 部署中途不能被撤：被取消会留下半套产物，线上就是缺页的站点，而 source-sha.txt 已盖章的话
+  # 下次重发还可能被当成「已是最新」放过。
+  cancel-in-progress: false
 
 env:
+  SOURCE_REPO: CeSun/Aura3D
   DOCS_BASE: /Aura3D-Docs/
-  DOCS_BRANCH: gh-pages
+  SITE_URL: https://cesun.github.io/Aura3D-Docs/
 
 jobs:
-  deploy:
+  check:
+    name: 解析文档来源版本
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.remote.outputs.sha }}
+    steps:
+      - name: 解析要构建的提交
+        id: remote
+        env:
+          # 触发输入走 env 而不是直接插进 shell：手滑打个引号也不会变成脚本注入
+          REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          ref="${REF:-main}"
+          sha=$(git ls-remote "https://github.com/${SOURCE_REPO}" "refs/heads/${ref}" | head -1 | cut -f1)
+          if [ -z "$sha" ]; then
+            # 不是分支名，那就只能是提交号；ls-remote 拿不到短提交号，所以这里要求完整 40 位
+            case "$ref" in
+              *[!0-9a-f]*)
+                echo "::error::${ref} 既不是 ${SOURCE_REPO} 的分支，也不是完整提交号" >&2
+                exit 1
+                ;;
+              *)
+                if [ "${#ref}" -ne 40 ]; then
+                  echo "::error::${ref} 像提交号但不足完整 40 位——ls-remote 解析不了短号，这里就拦掉，别让它跑到 checkout 才失败" >&2
+                  exit 1
+                fi
+                sha="$ref"
+                ;;
+            esac
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "文档内容取 \`${SOURCE_REPO}@${sha}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Build site
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Check out document source
+        # 跨仓库读的是公开仓库，不传 token；persist-credentials 关掉，构建脚本拿不到任何凭据
         uses: actions/checkout@v4
         with:
-          repository: CeSun/Aura3D
-          ref: ${{ inputs.source_ref }}
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ needs.check.outputs.sha }}
           path: .aura3d-source
           filter: tree:0
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -49,18 +99,79 @@ jobs:
           DOCS_SRC: ${{ github.workspace }}/.aura3d-source/doc
         run: npm run build
 
-      - name: Publish to ${{ env.DOCS_BRANCH }}
+      - name: 盖章并校验产物
+        env:
+          SHA: ${{ needs.check.outputs.sha }}
+          DIST: .vitepress/dist
         run: |
           set -euo pipefail
-          touch .vitepress/dist/.nojekyll
-          git config --global user.name "aura3d-docs-deploy"
-          git config --global user.email "bot@users.noreply.github.com"
+          # 线上跑的是哪个文档提交必须可查：deploy 的冒烟检查就是拿这个文件判定这次部署真生效了
+          echo "$SHA" > "$DIST/source-sha.txt"
+          # 结构假设逐条落地验一遍。少了 .nojekyll 之类的细节、或者 en 目录入口没生成，
+          # 坏站推上去之后比在这儿一条 ::error:: 难查得多。
+          for f in index.html home.html en/index.html en/home.html pipelines.html en/pipelines.html; do
+            if [ ! -f "$DIST/$f" ]; then
+              echo "::error::产物里没有 $f" >&2
+              exit 1
+            fi
+          done
+          {
+            echo
+            echo "- 产物 HTML 页数：$(find "$DIST" -name '*.html' | wc -l | tr -d ' ')"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          work=$(mktemp -d)
-          git init -q --initial-branch="$DOCS_BRANCH" "$work"
-          cp -R .vitepress/dist/. "$work"/
-          git -C "$work" add -A
-          git -C "$work" commit -q -m "docs: Aura3D@$(git -C .aura3d-source rev-parse --short HEAD)"
-          git -C "$work" push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}" "$DOCS_BRANCH"
+      - uses: actions/configure-pages@v4
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .vitepress/dist
+
+  deploy:
+    name: Deploy to Pages
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      # 作业级 permissions 是整块覆盖顶层的，所以 contents: read 要在这里再写一遍
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # deploy-pages 这条通道不跑 Jekyll，所以不需要再 touch .nojekyll
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: 冒烟检查线上页面
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ needs.check.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Pages 传播有几十秒延迟，所以重试而不是单次判定
+          for try in 1 2 3 4 5 6; do
+            live=$(curl -sf "${SITE_URL}source-sha.txt" || true)
+            [ "$live" = "$SHA" ] && break
+            echo "第 $try 次：线上是 ${live:-无}，20s 后重试"
+            sleep 20
+          done
+          if [ "$live" != "$SHA" ]; then
+            echo "::error::部署完成但线上 source-sha.txt 仍是 ${live:-无}，期望 $SHA" >&2
+            exit 1
+          fi
+          # 首页 + 中英各一页，跨 locale 与 cleanUrls=false 这两条约定都在上面
+          for page in home.html en/home.html rendering.html en/rendering.html; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${SITE_URL}${page}")
+            if [ "$code" != "200" ]; then
+              echo "::error::${SITE_URL}${page} 返回 $code" >&2
+              exit 1
+            fi
+          done
+          {
+            echo
+            echo "### 线上冒烟检查"
+            echo
+            echo "- 来源提交：\`$SHA\`"
+            echo "- \`source-sha.txt\` 已翻新"
+            echo "- \`home.html\` / \`en/home.html\` / \`rendering.html\` / \`en/rendering.html\` 均 200"
+          } >> "$GITHUB_STEP_SUMMARY"
