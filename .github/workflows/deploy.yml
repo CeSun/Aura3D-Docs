@@ -159,8 +159,9 @@ jobs:
             echo "::error::部署完成但线上 source-sha.txt 仍是 ${live:-无}，期望 $SHA" >&2
             exit 1
           fi
-          # 首页 + 中英各一页，跨 locale 与 cleanUrls=false 这两条约定都在上面
-          for page in home.html en/home.html rendering.html en/rendering.html; do
+          # 首页 + 中英各一页，跨 locale 与 cleanUrls=false 这两条约定都在上面；
+          # pipelines 页同时是 build 作业产物结构校验的探针，两处盯同一页
+          for page in home.html en/home.html pipelines.html en/pipelines.html; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "${SITE_URL}${page}")
             if [ "$code" != "200" ]; then
               echo "::error::${SITE_URL}${page} 返回 $code" >&2
@@ -173,5 +174,5 @@ jobs:
             echo
             echo "- 来源提交：\`$SHA\`"
             echo "- \`source-sha.txt\` 已翻新"
-            echo "- \`home.html\` / \`en/home.html\` / \`rendering.html\` / \`en/rendering.html\` 均 200"
+            echo "- \`home.html\` / \`en/home.html\` / \`pipelines.html\` / \`en/pipelines.html\` 均 200"
           } >> "$GITHUB_STEP_SUMMARY"
