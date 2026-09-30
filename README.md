@@ -6,7 +6,7 @@ VitePress 站点层。文档内容不在这里，真源是 [CeSun/Aura3D](https:
 
 ## 两个仓库之间的契约
 
-主仓库的 `doc/` 不直接当内容根：`tools/assemble.mjs` 先把它装配成本仓库的 `content/`（`srcDir` 固定指这里），中文从 `doc/cn/` 摊平到 `content/` 根、英文原样放 `content/en/`，再加本仓库自持的 `landing.md` → `content/index.md`。装配时会比对 `doc/cn` 与 `doc/en` 的文件清单与板块归属，任一不一致就 `::error::` 并 exit 1。
+主仓库的 `doc/` 不直接当内容根：`tools/assemble.mjs` 先把它装配成本仓库的 `content/`（`srcDir` 固定指这里），中文从 `doc/cn/` 摊平到 `content/` 根、英文原样放 `content/en/`，再加本仓库自持的中英落地页：`landing.md` → `content/index.md`、`landing-en.md` → `content/en/index.md`。装配时会比对 `doc/cn` 与 `doc/en` 的文件清单与板块归属，任一不一致就 `::error::` 并 exit 1。
 
 之所以要摊平：VitePress 的语言切换器靠「当前页相对路径去掉 locale 前缀」推导对等页，**默认语言必须占无前缀的根 locale**，所以中文页的 URL 没有 `/cn/`：
 
@@ -17,7 +17,7 @@ VitePress 站点层。文档内容不在这里，真源是 [CeSun/Aura3D](https:
 | `doc/en/home.md` | `/en/home.html` |
 | `doc/en/<page>.md` | `/en/<page>.html` |
 
-URL 带 `.html` 是因为 `cleanUrls: false`：GitHub Pages 不解析无扩展名 URL，开了 cleanUrls 站内链接会全 404。英文切换器给的是目录形态的 `/en/`，Pages 也不解析目录，所以 `.vitepress/config.mts` 里一个 `closeBundle` 插件补一个真实的 `en/index.html` 软跳转。
+URL 带 `.html` 是因为 `cleanUrls: false`：GitHub Pages 不解析无扩展名 URL，开了 cleanUrls 站内链接会全 404。语言切换器给的是目录形态的 `/` 与 `/en/`，Pages 靠目录下的 `index.html` 兜住——两个 locale 各有一张真实渲染的落地页，`/` 出中文 hero、`/en/` 出英文 hero。
 
 **侧边栏是生成的，不是手写的**：每篇文档在 frontmatter 里声明自己的板块归属——
 

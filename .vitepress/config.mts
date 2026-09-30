@@ -1,15 +1,6 @@
-import { writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { sidebar } from '../tools/pages.mjs'
-
-const EN_DIR_ENTRY = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Aura3D Documentation</title>
-<meta http-equiv="refresh" content="0; url=/Aura3D-Docs/en/home.html">
-<link rel="canonical" href="/Aura3D-Docs/en/home.html"></head>
-<body><a href="/Aura3D-Docs/en/home.html">Aura3D Documentation</a></body></html>
-`
 
 const contentDir = (sub: string) => fileURLToPath(new URL(`../content${sub}`, import.meta.url))
 
@@ -49,18 +40,6 @@ export default defineConfig({
         sidebar: { '/en/': sidebar({ dir: contentDir('/en'), sectionsRoot, base: '/en/', overview: 'Overview', lang: 'en' }) },
       },
     },
-  },
-  vite: {
-    plugins: [{
-      // 语言切换器给出目录形态的 /en/，Pages 不解析目录，所以补一个真实的 en/index.html
-      name: 'aura3d-en-directory-entry',
-      apply: 'build',
-      closeBundle() {
-        const dir = fileURLToPath(new URL('./dist/en', import.meta.url))
-        mkdirSync(dir, { recursive: true })
-        writeFileSync(join(dir, 'index.html'), EN_DIR_ENTRY)
-      },
-    }],
   },
   themeConfig: {
     siteTitle: 'Aura3D',

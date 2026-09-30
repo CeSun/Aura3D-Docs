@@ -60,6 +60,8 @@ await cp(join(src, 'cn'), out, { recursive: true })
 await cp(join(src, 'en'), join(out, 'en'), { recursive: true })
 await cp(join(src, 'sections.json'), join(out, 'sections.json'))
 await writeFile(join(out, 'index.md'), await readFile(join(siteRoot, 'landing.md')))
+// 英文落地页与中文对称：/en/ 直达 hero 页，而不是把人甩进总览
+await writeFile(join(out, 'en', 'index.md'), await readFile(join(siteRoot, 'landing-en.md')))
 
 console.log(`content assembled from ${src}`)
 console.log(`  zh: ${cn.length} pages, en: ${en.length} pages`)
