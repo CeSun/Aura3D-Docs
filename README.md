@@ -23,14 +23,14 @@ URL 带 `.html` 是因为 `cleanUrls: false`：GitHub Pages 不解析无扩展�
 
 ```yaml
 ---
-section: basics   # start | basics | advanced
+section: basics   # 键必须来自主仓库 doc/sections.json
 order: 1          # 板块内顺序
 ---
 ```
 
-`tools/pages.mjs` 从 `content/`（和 `content/en/`）读这些字段，加上各篇的 `# 一级标题` 作为条目文字，拼出两个语言各自的侧边栏；板块的**顺序与中英文标签**在 `tools/pages.mjs` 的 `SECTIONS` 与 `.vitepress/config.mts` 的 `sectionLabels` 里，各一处。归位错、`section` 键写错、同板块 `order` 撞车、中英归属对不上，都在 `npm run assemble` 阶段 `::error::` 并 exit 1（绕过装配手改 `content/` 的话，config 加载时同样抛错）。所以新增一篇文档只改主仓库那个文件本身，导航自动跟上。
+`tools/pages.mjs` 从 `content/`（和 `content/en/`）读这些字段，加上各篇的 `# 一级标题` 作为条目文字，拼出两个语言各自的侧边栏；板块的**清单、顺序与中英文标签**的真源是主仓库的 `doc/sections.json`（数组顺序即侧边栏顺序，每项 `{key, zh, en}`），装配时原样拷进 `content/sections.json`——新增板块只改主仓库这个文件，本仓库代码不用动。归位错、`section` 键不在清单里、同板块 `order` 撞车、中英归属对不上、声明了却没用的空板块，都在 `npm run assemble` 阶段 `::error::` 并 exit 1（绕过装配手改 `content/` 的话，config 加载时同样抛错）。所以新增一篇文档只改主仓库那个文件本身，导航自动跟上。
 
-`doc/cn/home.md` / `doc/en/home.md` 的总览表仍是文档手写的，和侧边栏同源但不同步——它不进 `SECTIONS` 生成路径。
+`doc/cn/home.md` / `doc/en/home.md` 的总览表仍是文档手写的，和侧边栏同源但不同步——它不进板块生成路径。
 
 ## 本地开发
 

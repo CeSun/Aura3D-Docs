@@ -13,10 +13,8 @@ const EN_DIR_ENTRY = `<!doctype html><html lang="en"><head><meta charset="utf-8"
 
 const contentDir = (sub: string) => fileURLToPath(new URL(`../content${sub}`, import.meta.url))
 
-const sectionLabels = {
-  zh: { start: '开始上手', basics: '基础', advanced: '进阶' },
-  en: { start: 'Get Started', basics: 'Basics', advanced: 'Advanced' },
-}
+// 板块顺序与中英标签的真源：主仓库 doc/sections.json，由 assemble 拷进 content/
+const sectionsRoot = contentDir('')
 
 export default defineConfig({
   srcDir: 'content',
@@ -37,7 +35,7 @@ export default defineConfig({
       description: 'Aura3D 三维渲染引擎使用手册',
       themeConfig: {
         nav: [{ text: '文档', link: '/home.html' }],
-        sidebar: { '/': sidebar({ dir: contentDir(''), base: '/', overview: '总览', labels: sectionLabels.zh }) },
+        sidebar: { '/': sidebar({ dir: contentDir(''), sectionsRoot, base: '/', overview: '总览', lang: 'zh' }) },
       },
     },
     en: {
@@ -48,7 +46,7 @@ export default defineConfig({
       description: 'Aura3D rendering engine manual',
       themeConfig: {
         nav: [{ text: 'Docs', link: '/en/home.html' }],
-        sidebar: { '/en/': sidebar({ dir: contentDir('/en'), base: '/en/', overview: 'Overview', labels: sectionLabels.en }) },
+        sidebar: { '/en/': sidebar({ dir: contentDir('/en'), sectionsRoot, base: '/en/', overview: 'Overview', lang: 'en' }) },
       },
     },
   },
