@@ -3,8 +3,7 @@ layout: home
 titleTemplate: false
 hero:
   name: Aura3D
-  text: A lightweight, high-performance and extensible Avalonia 3D control library
-  tagline: Scenes, models, animation and particles out of the box, with a fully replaceable render pipeline
+  tagline: A lightweight, high-performance and extensible Avalonia 3D control library
   actions:
     - theme: brand
       text: English Docs

@@ -3,8 +3,7 @@ layout: home
 titleTemplate: false
 hero:
   name: Aura3D
-  text: 轻量级、高性能、可扩展的 Avalonia 3D 控件库
-  tagline: 场景、模型、动画、粒子开箱即用，渲染管线可整体替换
+  tagline: 轻量级、高性能、可扩展的 Avalonia 3D 控件库
   actions:
     - theme: brand
       text: 中文文档
