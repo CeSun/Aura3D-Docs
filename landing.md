@@ -3,8 +3,8 @@ layout: home
 titleTemplate: false
 hero:
   name: Aura3D
-  text: 跨平台 3D 渲染引擎
-  tagline: 构建在 OpenGL ES 3.0 之上的 Avalonia 3D 渲染控件——场景、动画、粒子、实例化开箱即用，渲染管线可整体替换，一套代码覆盖桌面 / 移动 / 浏览器
+  text: 轻量级、高性能、可扩展的 Avalonia 3D 控件库
+  tagline: 场景、模型、动画、粒子、实例化开箱即用，渲染管线可整体替换，一套代码覆盖桌面 / 移动 / 浏览器
   actions:
     - theme: brand
       text: 中文文档

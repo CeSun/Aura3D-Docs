@@ -3,8 +3,8 @@ layout: home
 titleTemplate: false
 hero:
   name: Aura3D
-  text: Cross-Platform 3D Rendering Engine
-  tagline: An Avalonia 3D rendering control built on OpenGL ES 3.0 — scenes, animation, particles and instancing out of the box, a fully replaceable render pipeline, one codebase across desktop, mobile and the browser
+  text: A lightweight, high-performance and extensible Avalonia 3D control library
+  tagline: Scenes, models, animation, particles and instancing out of the box, a fully replaceable render pipeline, one codebase across desktop, mobile and the browser
   actions:
     - theme: brand
       text: English Docs
