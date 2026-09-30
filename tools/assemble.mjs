@@ -2,6 +2,7 @@ import { cp, mkdir, rm, writeFile, readFile, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { scanPages } from './pages.mjs'
 
 const siteRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const src = resolve(process.env.DOCS_SRC ?? join(siteRoot, 'aura3d', 'doc'))
@@ -26,6 +27,19 @@ if (cn.length !== en.length || cn.some((f, i) => f !== en[i])) {
   fail(`中英文档清单不一致，双语不变量已断：\ncn: ${cn.join(' ')}\nen: ${en.join(' ')}`)
 }
 
+// 侧边栏由每篇的 section/order 生成，所以归属也得双语一致，否则两个语言各自分板块
+const scanned = { cn: scanPages(join(src, 'cn')), en: scanPages(join(src, 'en')) }
+for (const [lang, { problems }] of Object.entries(scanned)) {
+  for (const p of problems) fail(`${lang}: ${p}`)
+}
+const [cnPages, enPages] = [scanned.cn.pages, scanned.en.pages]
+for (const page of cnPages) {
+  const mate = enPages.find(p => p.slug === page.slug)
+  if (mate && (mate.section !== page.section || mate.order !== page.order)) {
+    fail(`板块归属不一致：${page.slug} 中文是 ${page.section}/${page.order}，英文是 ${mate.section}/${mate.order}`)
+  }
+}
+
 await rm(out, { recursive: true, force: true })
 await mkdir(out, { recursive: true })
 // 站点要求默认语言占无前缀的根 locale，所以中文摊平到 content 根，英文留在 en/
@@ -35,6 +49,7 @@ await writeFile(join(out, 'index.md'), await readFile(join(siteRoot, 'landing.md
 
 console.log(`content assembled from ${src}`)
 console.log(`  zh: ${cn.length} pages, en: ${en.length} pages`)
+for (const page of cnPages) console.log(`  ${page.section}/${page.order}: ${page.slug}`)
 if (process.exitCode) {
-  console.error('::error:: 装配完成但清单校验未通过，构建结果可能缺页')
+  console.error('::error:: 装配完成但校验未通过，构建结果可能缺页或分板块出错')
 }

@@ -6,7 +6,7 @@ VitePress 站点层。文档内容不在这里，真源是 [CeSun/Aura3D](https:
 
 ## 两个仓库之间的契约
 
-主仓库的 `doc/` 不直接当内容根：`tools/assemble.mjs` 先把它装配成本仓库的 `content/`（`srcDir` 固定指这里），中文从 `doc/cn/` 摊平到 `content/` 根、英文原样放 `content/en/`，再加本仓库自持的 `landing.md` → `content/index.md`。装配时会比对 `doc/cn` 与 `doc/en` 的文件清单，不一致就 `::error::` 并 exit 1。
+主仓库的 `doc/` 不直接当内容根：`tools/assemble.mjs` 先把它装配成本仓库的 `content/`（`srcDir` 固定指这里），中文从 `doc/cn/` 摊平到 `content/` 根、英文原样放 `content/en/`，再加本仓库自持的 `landing.md` → `content/index.md`。装配时会比对 `doc/cn` 与 `doc/en` 的文件清单与板块归属，任一不一致就 `::error::` 并 exit 1。
 
 之所以要摊平：VitePress 的语言切换器靠「当前页相对路径去掉 locale 前缀」推导对等页，**默认语言必须占无前缀的根 locale**，所以中文页的 URL 没有 `/cn/`：
 
@@ -19,7 +19,18 @@ VitePress 站点层。文档内容不在这里，真源是 [CeSun/Aura3D](https:
 
 URL 带 `.html` 是因为 `cleanUrls: false`：GitHub Pages 不解析无扩展名 URL，开了 cleanUrls 站内链接会全 404。英文切换器给的是目录形态的 `/en/`，Pages 也不解析目录，所以 `.vitepress/config.mts` 里一个 `closeBundle` 插件补一个真实的 `en/index.html` 软跳转。
 
-侧边栏与导航在 `.vitepress/config.mts` 里手写，新增文档要同步那里。
+**侧边栏是生成的，不是手写的**：每篇文档在 frontmatter 里声明自己的板块归属——
+
+```yaml
+---
+section: basics   # start | basics | advanced
+order: 1          # 板块内顺序
+---
+```
+
+`tools/pages.mjs` 从 `content/`（和 `content/en/`）读这些字段，加上各篇的 `# 一级标题` 作为条目文字，拼出两个语言各自的侧边栏；板块的**顺序与中英文标签**在 `tools/pages.mjs` 的 `SECTIONS` 与 `.vitepress/config.mts` 的 `sectionLabels` 里，各一处。归位错、`section` 键写错、同板块 `order` 撞车、中英归属对不上，都在 `npm run assemble` 阶段 `::error::` 并 exit 1（绕过装配手改 `content/` 的话，config 加载时同样抛错）。所以新增一篇文档只改主仓库那个文件本身，导航自动跟上。
+
+`doc/cn/home.md` / `doc/en/home.md` 的总览表仍是文档手写的，和侧边栏同源但不同步——它不进 `SECTIONS` 生成路径。
 
 ## 本地开发
 

@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
+import { sidebar } from '../tools/pages.mjs'
 
 const EN_DIR_ENTRY = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>Aura3D Documentation</title>
@@ -10,32 +11,12 @@ const EN_DIR_ENTRY = `<!doctype html><html lang="en"><head><meta charset="utf-8"
 <body><a href="/Aura3D-Docs/en/home.html">Aura3D Documentation</a></body></html>
 `
 
-const docPages = [
-  { text: '开始上手', link: 'get-started' },
-  { text: '渲染管线', link: 'pipelines' },
-  { text: '动画系统', link: 'animation' },
-  { text: '实例化渲染', link: 'instanced-rendering' },
-  { text: '渲染专题', link: 'rendering' },
-  { text: '粒子系统', link: 'particle-system' },
-  { text: 'GPU 资源生命周期', link: 'gpu-resource-lifecycle' },
-  { text: '平台与渲染后端', link: 'platform-render-backends' },
-]
+const contentDir = (sub: string) => fileURLToPath(new URL(`../content${sub}`, import.meta.url))
 
-const enDocPages = [
-  { text: 'Get Started', link: 'get-started' },
-  { text: 'Rendering Pipelines', link: 'pipelines' },
-  { text: 'Animation System', link: 'animation' },
-  { text: 'Instanced Rendering', link: 'instanced-rendering' },
-  { text: 'Rendering Topics', link: 'rendering' },
-  { text: 'Particle System', link: 'particle-system' },
-  { text: 'GPU Resource Lifecycle', link: 'gpu-resource-lifecycle' },
-  { text: 'Platforms and Render Backends', link: 'platform-render-backends' },
-]
-
-const sidebar = (base: string, overview: string, pages: typeof docPages) => [
-  { text: overview, link: `${base}home.html` },
-  ...pages.map(p => ({ text: p.text, link: `${base}${p.link}.html` })),
-]
+const sectionLabels = {
+  zh: { start: '开始上手', basics: '基础', advanced: '进阶' },
+  en: { start: 'Get Started', basics: 'Basics', advanced: 'Advanced' },
+}
 
 export default defineConfig({
   srcDir: 'content',
@@ -56,7 +37,7 @@ export default defineConfig({
       description: 'Aura3D 三维渲染引擎使用手册',
       themeConfig: {
         nav: [{ text: '文档', link: '/home.html' }],
-        sidebar: { '/': sidebar('/', '总览', docPages) },
+        sidebar: { '/': sidebar({ dir: contentDir(''), base: '/', overview: '总览', labels: sectionLabels.zh }) },
       },
     },
     en: {
@@ -67,7 +48,7 @@ export default defineConfig({
       description: 'Aura3D rendering engine manual',
       themeConfig: {
         nav: [{ text: 'Docs', link: '/en/home.html' }],
-        sidebar: { '/en/': sidebar('/en/', 'Overview', enDocPages) },
+        sidebar: { '/en/': sidebar({ dir: contentDir('/en'), base: '/en/', overview: 'Overview', labels: sectionLabels.en }) },
       },
     },
   },
